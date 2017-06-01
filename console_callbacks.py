@@ -23,8 +23,8 @@ if alsa.mixers():
 audio_arg_parser = argparse.ArgumentParser(add_help=False)
 
 playback_device_group = audio_arg_parser.add_mutually_exclusive_group()
-playback_device_group.add_argument('--device', '-D', help='alsa output device (deprecated, use --playback_device)', default='default')
 playback_device_group.add_argument('--playback_device', '-o', help='alsa output device (get name from aplay -L)', default='default')
+playback_device_group.add_argument('--playback_device_index', '-D', help='alsa device index (get from aplay -l)', type=int)
 
 audio_arg_parser.add_argument('--on_connect', help='Run command when client connects')
 audio_arg_parser.add_argument('--mixer_device_index', help='alsa card index of the mixer device', type=int)
@@ -64,7 +64,7 @@ class AlsaSink:
                 if self._args.playback_device != 'default':
                     pcm_args['device'] = self._args.playback_device
                 else:
-                    pcm_args['card'] = self._args.device
+                    pcm_args['cardindex'] = self._args.playback_device_index
                 pcm = alsa.PCM(**pcm_args)
 
                 pcm.setchannels(CHANNELS)
