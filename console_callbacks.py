@@ -16,6 +16,10 @@ PERIODSIZE = int(44100 / 4) # 0.25s
 SAMPLESIZE = 2 # 16 bit integer
 MAXPERIODS = int(0.5 * RATE / PERIODSIZE) # 0.5s Buffer
 
+default_mixer = None
+if alsa.mixers():
+    default_mixer = alsa.mixers()[0]
+
 audio_arg_parser = argparse.ArgumentParser(add_help=False)
 
 playback_device_group = audio_arg_parser.add_mutually_exclusive_group()
@@ -24,7 +28,7 @@ playback_device_group.add_argument('--playback_device', '-o', help='alsa output 
 
 audio_arg_parser.add_argument('--on_connect', help='Run command when client connects')
 audio_arg_parser.add_argument('--mixer_device_index', help='alsa card index of the mixer device', type=int)
-audio_arg_parser.add_argument('--mixer', '-m', help='alsa mixer name for volume control', default=alsa.mixers()[0])
+audio_arg_parser.add_argument('--mixer', '-m', help='alsa mixer name for volume control', default=default_mixer)
 audio_arg_parser.add_argument('--dbrange', '-r', help='alsa mixer volume range in Db', default=0)
 args = audio_arg_parser.parse_known_args()[0]
 
@@ -100,28 +104,31 @@ class AlsaSink:
 
 session = PlaybackSession()
 device = AlsaSink(session, args)
-mixer_card_arg = {}
-if args.mixer_device_index:
-    mixer_card_arg['cardindex'] = args.mixer_device_index
+if args.mixer:
+    mixer_card_arg = {}
+    if args.mixer_device_index:
+        mixer_card_arg['cardindex'] = args.mixer_device_index
 
-mixer = alsa.Mixer(args.mixer, **mixer_card_arg)
+    mixer = alsa.Mixer(args.mixer, **mixer_card_arg)
 
-try:
-    mixer.getmute()
-    mute_available = True
-except alsa.ALSAAudioError:
-    mute_available = False
-    print "Device has no native mute"
+    try:
+        mixer.getmute()
+        mute_available = True
+    except alsa.ALSAAudioError:
+        mute_available = False
+        print "Device has no native mute"
 
-#Gets mimimum volume Db for the mixer
-volume_range = (mixer.getrange()[1]-mixer.getrange()[0]) / 100
-selected_volume_range = int(args.dbrange)
-if selected_volume_range > volume_range or selected_volume_range == 0:
-    selected_volume_range = volume_range
-min_volume_range = 0
-if volume_range > 0:
-    min_volume_range = (1 - selected_volume_range / volume_range) * 100
-print "min_volume_range: {}".format(min_volume_range)
+    #Gets mimimum volume Db for the mixer
+    volume_range = (mixer.getrange()[1]-mixer.getrange()[0]) / 100
+    selected_volume_range = int(args.dbrange)
+    if selected_volume_range > volume_range or selected_volume_range == 0:
+        selected_volume_range = volume_range
+    min_volume_range = 0
+    if volume_range > 0:
+        min_volume_range = (1 - selected_volume_range / volume_range) * 100
+    print "min_volume_range: {}".format(min_volume_range)
+else:
+    mixer = None
 
 def userdata_wrapper(f):
     def inner(*args):
@@ -254,6 +261,8 @@ def playback_seek(self, millis):
 @userdata_wrapper
 def playback_volume(self, volume):
     print "playback_volume: {}".format(volume)
+    if not mixer:
+        return
     if volume == 0:
         if mute_available:
             mixer.setmute(1)
