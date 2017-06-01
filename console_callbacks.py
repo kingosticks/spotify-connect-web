@@ -16,10 +16,6 @@ PERIODSIZE = int(44100 / 4) # 0.25s
 SAMPLESIZE = 2 # 16 bit integer
 MAXPERIODS = int(0.5 * RATE / PERIODSIZE) # 0.5s Buffer
 
-default_mixer = None
-if alsa.mixers():
-    default_mixer = alsa.mixers()[0]
-
 audio_arg_parser = argparse.ArgumentParser(add_help=False)
 
 playback_device_group = audio_arg_parser.add_mutually_exclusive_group()
@@ -28,7 +24,7 @@ playback_device_group.add_argument('--playback_device_index', '-D', help='alsa d
 
 audio_arg_parser.add_argument('--on_connect', help='Run command when client connects')
 audio_arg_parser.add_argument('--mixer_device_index', help='alsa card index of the mixer device', type=int)
-audio_arg_parser.add_argument('--mixer', '-m', help='alsa mixer name for volume control', default=default_mixer)
+audio_arg_parser.add_argument('--mixer', '-m', help='alsa mixer name for volume control', default=None)
 audio_arg_parser.add_argument('--dbrange', '-r', help='alsa mixer volume range in Db', default=0)
 args = audio_arg_parser.parse_known_args()[0]
 
